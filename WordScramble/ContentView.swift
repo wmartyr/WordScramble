@@ -11,6 +11,10 @@ struct ContentView: View {
     @State private var usedWords = [String]()
     @State private var rootWord = ""
     @State private var newWord = ""
+    @State private var allWordsArray = [String]()
+    @State private var wordScore = 0
+    @State private var letterScore = 0
+    @State private var averageScore = 0.0
     
     @State private var errorTitle = ""
     @State private var errorMessage = ""
@@ -22,6 +26,11 @@ struct ContentView: View {
                 Section {
                     TextField("Enter your word", text: $newWord)
                         .textInputAutocapitalization(.never)
+                }
+                Section {
+                    Text("Number of words: \(wordScore)")
+                    Text("Total letters: \(letterScore)")
+                    Text("Average letters per word: \(averageScore, specifier: "%.2f")")
                 }
                 Section {
                     ForEach(usedWords, id: \.self) {word in
@@ -40,6 +49,9 @@ struct ContentView: View {
             } message: {
                 Text(errorMessage)
             }
+            .toolbar {
+                Button("Restart", action: restartGame)
+            }
         }
     }
     
@@ -49,7 +61,7 @@ struct ContentView: View {
         guard answer.count > 0 else {return}
         
         guard isOriginal(word: answer) else {
-            wordError(title: "Word used already", message: "Be more original")
+            wordError(title: "Word used already", message: "Be more original.")
             return
         }
         
@@ -63,16 +75,30 @@ struct ContentView: View {
             return
         }
         
+        guard isLong(word: answer) else {
+            wordError(title: "Word is too short", message: "Words have to be at least 3 letters.")
+            return
+        }
+         
+        guard isDifferent(word: answer) else {
+            wordError(title: "Word is the same", message: "You cannot use the root word.")
+            return
+        }
+        
         withAnimation {
             usedWords.insert(answer, at: 0)
         }
+        wordScore += 1
+        letterScore += answer.count
+        averageScore = Double(letterScore) / Double(wordScore)
         newWord = ""
+        
     }
     
     func startGame() {
         if let startWordsURL = Bundle.main.url(forResource: "start", withExtension: "txt") {
             if let startWords = try? String(contentsOf: startWordsURL) {
-                let allWordsArray = startWords.components(separatedBy: "\n")
+                allWordsArray = startWords.components(separatedBy: "\n")
                 rootWord = allWordsArray.randomElement() ?? "silkworm"
                 return
             }
@@ -105,10 +131,26 @@ struct ContentView: View {
         return misspelledRange.location == NSNotFound
     }
     
+    func isLong(word: String) -> Bool {
+        !(word.count < 3)
+    }
+    
+    func isDifferent(word: String) -> Bool {
+        rootWord != word
+    }
+    
     func wordError(title: String, message: String) {
         errorTitle = title
         errorMessage = message
         showingError = true
+    }
+    
+    func restartGame() {
+        rootWord = allWordsArray.randomElement() ?? "silkworm"
+        usedWords = []
+        wordScore = 0
+        letterScore = 0
+        averageScore = 0
     }
 }
 
